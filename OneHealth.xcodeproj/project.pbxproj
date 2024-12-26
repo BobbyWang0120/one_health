@@ -10,9 +10,22 @@
 		873A6A6D2D1E0A7D00C394D1 /* OneHealth.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OneHealth.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		873A6A862D1E1C0B00C394D1 /* Exceptions for "OneHealth" folder in "OneHealth" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 873A6A6C2D1E0A7D00C394D1 /* OneHealth */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		873A6A6F2D1E0A7D00C394D1 /* OneHealth */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				873A6A862D1E1C0B00C394D1 /* Exceptions for "OneHealth" folder in "OneHealth" target */,
+			);
 			path = OneHealth;
 			sourceTree = "<group>";
 		};
@@ -249,12 +262,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = OneHealth/OneHealth.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"OneHealth/Preview Content\"";
 				DEVELOPMENT_TEAM = PJRB3XXQGN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = OneHealth/Info.plist;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "OneHealth needs access to your health data to show you a comprehensive overview of your health metrics.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "OneHealth needs permission to update your health data.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -279,12 +296,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = OneHealth/OneHealth.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"OneHealth/Preview Content\"";
 				DEVELOPMENT_TEAM = PJRB3XXQGN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = OneHealth/Info.plist;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "OneHealth needs access to your health data to show you a comprehensive overview of your health metrics.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "OneHealth needs permission to update your health data.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

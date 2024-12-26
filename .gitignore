@@ -1,0 +1,24 @@
+# macOS 系统文件
+.DS_Store
+
+# Xcode 构建文件夹
+DerivedData/
+build/
+
+# Xcode 用户特定文件
+*.xcuserstate
+*.xcworkspace
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+
+# Swift Package Manager
+/.swiftpm
+/.build
+Packages/
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Carthage
+Carthage/

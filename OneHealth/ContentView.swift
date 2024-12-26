@@ -9,12 +9,28 @@
 import SwiftUI
 import HealthKit
 
+// 定义睡眠数据模型
+struct SleepData {
+    var bedTime: Date?          // 上床时间
+    var wakeTime: Date?         // 起床时间
+    var sleepHours: Double      // 睡眠时长（小时）
+    var date: Date              // 日期
+}
+
+// 定义健身数据模型
+struct WorkoutData {
+    var duration: TimeInterval  // 运动时长
+    var energyBurned: Double    // 消耗的卡路里
+    var workoutType: String     // 运动类型
+    var date: Date              // 日期
+}
+
 // 定义健康数据模型，存储各项健康指标
 struct HealthData {
-    var steps: Int = 0          // 步数
-    var activeEnergy: Double = 0 // 活动能量消耗（卡路里）
-    var sleepHours: Double = 0   // 睡眠时长（小时）
-    var heartRate: Double = 0    // 心率（次/分钟）
+    var sleepRecords: [SleepData] = []      // 睡眠记录
+    var workoutRecords: [WorkoutData] = []   // 健身记录
+    var todaySleep: SleepData?              // 今日睡眠数据
+    var todayWorkout: WorkoutData?          // 今日健身数据
 }
 
 struct ContentView: View {
@@ -28,15 +44,60 @@ struct ContentView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
-                    // 根据授权状态显示不同的界面
                     if isAuthorized {
-                        // 已授权：显示健康数据卡片
-                        HealthDataCard(title: "Steps", value: "\(healthData.steps)", icon: "figure.walk")
-                        HealthDataCard(title: "Active Energy", value: String(format: "%.1f kcal", healthData.activeEnergy), icon: "flame.fill")
-                        HealthDataCard(title: "Sleep", value: String(format: "%.1f hours", healthData.sleepHours), icon: "bed.double.fill")
-                        HealthDataCard(title: "Heart Rate", value: String(format: "%.0f BPM", healthData.heartRate), icon: "heart.fill")
+                        // 今日睡眠数据卡片
+                        if let sleepData = healthData.todaySleep {
+                            HealthDataCard(title: "Today's Sleep",
+                                         value: String(format: "%.1f hours", sleepData.sleepHours),
+                                         icon: "bed.double.fill")
+                            
+                            if let bedTime = sleepData.bedTime {
+                                Text("Bed Time: \(formatTime(bedTime))")
+                                    .font(.subheadline)
+                            }
+                            if let wakeTime = sleepData.wakeTime {
+                                Text("Wake Time: \(formatTime(wakeTime))")
+                                    .font(.subheadline)
+                            }
+                        }
+                        
+                        // 今日健身数据卡片
+                        if let workoutData = healthData.todayWorkout {
+                            HealthDataCard(title: "Today's Workout",
+                                         value: String(format: "%.1f kcal", workoutData.energyBurned),
+                                         icon: "flame.fill")
+                            Text("Duration: \(formatDuration(workoutData.duration))")
+                                .font(.subheadline)
+                            Text("Activity: \(workoutData.workoutType)")
+                                .font(.subheadline)
+                        }
+                        
+                        // 历史数据概览
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Recent Sleep History")
+                                .font(.headline)
+                            ForEach(healthData.sleepRecords.prefix(5), id: \.date) { sleep in
+                                Text("\(formatDate(sleep.date)): \(String(format: "%.1f hrs", sleep.sleepHours))")
+                                    .font(.subheadline)
+                            }
+                        }
+                        .padding()
+                        .background(.gray.opacity(0.1))
+                        .cornerRadius(10)
+                        
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Recent Workout History")
+                                .font(.headline)
+                            ForEach(healthData.workoutRecords.prefix(5), id: \.date) { workout in
+                                Text("\(formatDate(workout.date)): \(workout.workoutType) - \(String(format: "%.1f kcal", workout.energyBurned))")
+                                    .font(.subheadline)
+                            }
+                        }
+                        .padding()
+                        .background(.gray.opacity(0.1))
+                        .cornerRadius(10)
                     } else {
-                        // 未授权：显示授权请求界面
+                        // 未授权界面保持不变
                         VStack(spacing: 16) {
                             Image(systemName: "heart.text.square.fill")
                                 .font(.system(size: 50))
@@ -63,7 +124,7 @@ struct ContentView: View {
             }
             .navigationTitle("Health Dashboard")
             .onAppear {
-                checkAuthorization() // 界面出现时检查授权状态
+                checkAuthorization()
             }
             .alert("Authorization Error", isPresented: $showingAuthError) {
                 Button("OK", role: .cancel) { }
@@ -75,7 +136,6 @@ struct ContentView: View {
     
     // 检查HealthKit授权状态
     private func checkAuthorization() {
-        // 确保设备支持HealthKit
         guard HKHealthStore.isHealthDataAvailable() else {
             showingAuthError = true
             return
@@ -83,13 +143,11 @@ struct ContentView: View {
         
         // 定义需要访问的健康数据类型
         let types = Set([
-            HKObjectType.quantityType(forIdentifier: .stepCount)!,           // 步数
-            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!, // 活动能量
             HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,      // 睡眠分析
-            HKObjectType.quantityType(forIdentifier: .heartRate)!           // 心率
+            HKObjectType.workoutType(),                                     // 体能训练
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)! // 活动能量
         ])
         
-        // 获取授权状态
         healthStore.getRequestStatusForAuthorization(toShare: [], read: types) { (status, error) in
             DispatchQueue.main.async {
                 isAuthorized = status == .unnecessary
@@ -107,15 +165,12 @@ struct ContentView: View {
             return
         }
         
-        // 定义需要访问的健康数据类型
         let types = Set([
-            HKObjectType.quantityType(forIdentifier: .stepCount)!,
-            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
             HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
-            HKObjectType.quantityType(forIdentifier: .heartRate)!
+            HKObjectType.workoutType(),
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!
         ])
         
-        // 请求授权
         healthStore.requestAuthorization(toShare: [], read: types) { success, error in
             DispatchQueue.main.async {
                 isAuthorized = success
@@ -130,91 +185,137 @@ struct ContentView: View {
     
     // 获取所有健康数据
     private func fetchHealthData() {
-        fetchSteps()
-        fetchActiveEnergy()
-        fetchSleep()
-        fetchHeartRate()
-    }
-    
-    // 获取步数数据
-    private func fetchSteps() {
-        guard let stepsType = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return }
-        let now = Date()
-        let startOfDay = Calendar.current.startOfDay(for: now)
-        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
-        
-        // 创建步数统计查询
-        let query = HKStatisticsQuery(quantityType: stepsType,
-                                    quantitySamplePredicate: predicate,
-                                    options: .cumulativeSum) { _, result, error in
-            guard let result = result, let sum = result.sumQuantity() else { return }
-            DispatchQueue.main.async {
-                healthData.steps = Int(sum.doubleValue(for: .count()))
-            }
-        }
-        healthStore.execute(query)
-    }
-    
-    // 获取活动能量消耗数据
-    private func fetchActiveEnergy() {
-        guard let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else { return }
-        let now = Date()
-        let startOfDay = Calendar.current.startOfDay(for: now)
-        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
-        
-        // 创建活动能量统计查询
-        let query = HKStatisticsQuery(quantityType: energyType,
-                                    quantitySamplePredicate: predicate,
-                                    options: .cumulativeSum) { _, result, error in
-            guard let result = result, let sum = result.sumQuantity() else { return }
-            DispatchQueue.main.async {
-                healthData.activeEnergy = sum.doubleValue(for: .kilocalorie())
-            }
-        }
-        healthStore.execute(query)
+        fetchSleepData()
+        fetchWorkoutData()
     }
     
     // 获取睡眠数据
-    private func fetchSleep() {
+    private func fetchSleepData() {
         guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return }
-        let now = Date()
-        let startOfDay = Calendar.current.startOfDay(for: now)
-        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
         
-        // 创建睡眠样本查询
+        // 查询过去30天的睡眠数据
+        let calendar = Calendar.current
+        let now = Date()
+        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: now)!
+        let predicate = HKQuery.predicateForSamples(withStart: thirtyDaysAgo, end: now, options: .strictStartDate)
+        
         let query = HKSampleQuery(sampleType: sleepType,
                                 predicate: predicate,
                                 limit: HKObjectQueryNoLimit,
-                                sortDescriptors: nil) { _, samples, error in
+                                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)]) { _, samples, error in
             guard let samples = samples as? [HKCategorySample] else { return }
-            // 计算总睡眠时间（秒）并转换为小时
-            let totalSeconds = samples.reduce(0.0) { total, sample in
-                total + sample.endDate.timeIntervalSince(sample.startDate)
-            }
+            
+            // 按日期分组处理睡眠数据
+            let sleepRecords = processSleepSamples(samples)
             DispatchQueue.main.async {
-                healthData.sleepHours = totalSeconds / 3600.0
+                healthData.sleepRecords = sleepRecords
+                healthData.todaySleep = sleepRecords.first
             }
         }
         healthStore.execute(query)
     }
     
-    // 获取心率数据
-    private func fetchHeartRate() {
-        guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return }
-        let now = Date()
-        let startOfDay = Calendar.current.startOfDay(for: now)
-        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
+    // 处理睡眠样本数据
+    private func processSleepSamples(_ samples: [HKCategorySample]) -> [SleepData] {
+        let calendar = Calendar.current
+        var sleepByDate: [Date: [HKCategorySample]] = [:]
         
-        // 创建心率统计查询（获取平均心率）
-        let query = HKStatisticsQuery(quantityType: heartRateType,
-                                    quantitySamplePredicate: predicate,
-                                    options: .discreteAverage) { _, result, error in
-            guard let result = result, let average = result.averageQuantity() else { return }
+        // 按日期分组
+        for sample in samples {
+            let dateComponents = calendar.dateComponents([.year, .month, .day], from: sample.startDate)
+            if let date = calendar.date(from: dateComponents) {
+                if sleepByDate[date] == nil {
+                    sleepByDate[date] = []
+                }
+                sleepByDate[date]?.append(sample)
+            }
+        }
+        
+        // 处理每天的睡眠数据
+        return sleepByDate.map { date, dailySamples in
+            var sleepData = SleepData(sleepHours: 0, date: date)
+            var totalSleepSeconds = 0.0
+            
+            // 找出最早的入睡时间和最晚的起床时间
+            let sortedSamples = dailySamples.sorted { $0.startDate < $1.startDate }
+            sleepData.bedTime = sortedSamples.first?.startDate
+            sleepData.wakeTime = sortedSamples.last?.endDate
+            
+            // 计算总睡眠时间
+            for sample in dailySamples {
+                totalSleepSeconds += sample.endDate.timeIntervalSince(sample.startDate)
+            }
+            sleepData.sleepHours = totalSleepSeconds / 3600.0
+            
+            return sleepData
+        }.sorted { $0.date > $1.date }
+    }
+    
+    // 获取健身数据
+    private func fetchWorkoutData() {
+        // 查询过去30天的健身数据
+        let calendar = Calendar.current
+        let now = Date()
+        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: now)!
+        let predicate = HKQuery.predicateForSamples(withStart: thirtyDaysAgo, end: now, options: .strictStartDate)
+        
+        let query = HKSampleQuery(sampleType: .workoutType(),
+                                predicate: predicate,
+                                limit: HKObjectQueryNoLimit,
+                                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)]) { _, samples, error in
+            guard let workouts = samples as? [HKWorkout] else { return }
+            
+            let workoutRecords = workouts.map { workout in
+                WorkoutData(
+                    duration: workout.duration,
+                    energyBurned: workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? 0,
+                    workoutType: workout.workoutActivityType.name,
+                    date: workout.startDate
+                )
+            }
+            
             DispatchQueue.main.async {
-                healthData.heartRate = average.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
+                healthData.workoutRecords = workoutRecords
+                healthData.todayWorkout = workoutRecords.first
             }
         }
         healthStore.execute(query)
+    }
+    
+    // 格式化时间
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+    
+    // 格式化日期
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
+    }
+    
+    // 格式化时长
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = Int(duration) / 60 % 60
+        return String(format: "%dh %dm", hours, minutes)
+    }
+}
+
+// 扩展HKWorkoutActivityType以获取可读性更好的名称
+extension HKWorkoutActivityType {
+    var name: String {
+        switch self {
+        case .running: return "Running"
+        case .cycling: return "Cycling"
+        case .walking: return "Walking"
+        case .swimming: return "Swimming"
+        case .yoga: return "Yoga"
+        case .functionalStrengthTraining: return "Strength Training"
+        default: return "Other"
+        }
     }
 }
 
